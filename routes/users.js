@@ -84,6 +84,16 @@ router.get('/logout', cors.corsWithOptions, (req, res, next) => {
   // res.redirect('/');
 })
 
+router.get('/facebook/token', passport.authenticate('facebook-token'), (req, res) => {
+  console.log("Request.user(fb) = ", req.user);
+  if(req.user){
+    var token = authenticate.getToken({ _id: req.user._id});  
+    res.statusCode = 200;
+    res.setHeader('Content-Type', 'application/json');
+    res.json({ success: true, token: token, status: 'You are successfully logged in! using fb' });
+  }
+});
+
 module.exports = router;
 // {"success":true,"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2MDY0ZGFiNjZjYjJkMjI1OTgyNmZiOTkiLCJpYXQiOjE2MTcyNzgxNzMsImV4cCI6MTYxNzI4MTc3M30.dYttjtJPb2aZaICylvtmioIaPb7xMpvX0ixCVmMJbIc","status":"You are successfully logged in!"}
 // Authorization: bearer <token>
