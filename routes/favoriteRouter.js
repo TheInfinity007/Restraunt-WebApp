@@ -36,11 +36,15 @@ favoriteRouter.route('/')
         .then(favorite => {
             if(!favorite){
                 Favorites.create({ user: req.user._id, dishes: dishes })
-                .then(newFavorite => {
-                    console.log("Favorite created = ", newFavorite);
-                    res.statusCode = 200;
-                    res.setHeader('Content-Type', 'application/json');
-                    res.json(newFavorite);
+                .then(favorite => {
+                    Favorites.findById(favorite._id).populate('user').populate('dishes')
+                    .then(favorite => {
+                        console.log("Favorite created = ", favorite);
+                        res.statusCode = 200;
+                        res.setHeader('Content-Type', 'application/json');
+                        res.json(favorite);
+                    }, err => next(err))
+                    .catch(err => next(err))                    
                 }, err => next(err)) 
                 .catch(err => next(err)); 
             }
@@ -55,11 +59,15 @@ favoriteRouter.route('/')
                         }
                     }
                     favorite.save()
-                    .then(newFavorite => {
-                        console.log("Favorites updated = ", newFavorite);
-                        res.statusCode = 200;
-                        res.setHeader('Content-Type', 'application/json');
-                        res.json(newFavorite);
+                    .then(favorite => {
+                        Favorites.findById(favorite._id).populate('user').populate('dishes')
+                        .then(favorite => {
+                            console.log("Favorites updated = ", favorite);
+                            res.statusCode = 200;
+                            res.setHeader('Content-Type', 'application/json');
+                            res.json(favorite);
+                        }, err => next(err))
+                        .catch(err => next(err))
                     }, err => next(err))
                     .catch(err => next(err))
                 }, err => next(err))
@@ -74,6 +82,7 @@ favoriteRouter.route('/')
 })
 .put(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) => {
     res.statusCode = 405;
+    res.setHeader('Content-Type', 'text/plain');
 	res.end('PUT operation not suppported on /favorites/');  
 })
 .delete(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) => {
@@ -90,8 +99,26 @@ favoriteRouter.route('/')
 favoriteRouter.route('/:dishId')
 .options(cors.corsWithOptions, (req, res) => res.sendStatus(200))
 .get(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) => {
-    res.statusCode = 405;
-	res.end('GET operation not suppported on /favorites/' + req.params.dishId);
+    Favorites.findOne({ user: req.user._id})
+    .then(favorite => {
+        if(!favorite){
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            return res.json({ "exists": false, "favorites": favorite })
+        }else{
+            if(favorite.dishes.indexOf(req.params.dishId) !== -1){
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                return res.json({ "exists": true, "favorites": favorite })
+            }
+            else{
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                return res.json({ "exists": false, "favorites": favorite })
+            }
+        }
+    }, (err) => next(err))
+    .catch(err => next(err))
 })
 .post(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) => {
     
@@ -101,8 +128,9 @@ favoriteRouter.route('/:dishId')
         if(favorite){           
             if(favorite.dishes.indexOf(req.params.dishId) != -1){
                 console.log("Item already in favorites");
-                res.statusCode = 304;
-                res.end("Item already in favorites");
+                res.statusCode = 403;
+                res.setHeader('Content-Type', 'text/plain');
+                res.end('Dish ' + req.params.dishId + ' already exists in favorites');
                 return;
             }
         }
@@ -116,24 +144,33 @@ favoriteRouter.route('/:dishId')
 			    return next(err);
             }else{
                 console.log("Dish Exist");
-                res.statusCode = 200;
-                res.setHeader('Content-Type', 'application/json');
                 // if the favorite does not exist create a favorite
                 if(!favorite){                                                
                     Favorites.create({ user: req.user._id, dishes: [dish._id] })
-                    .then(newFavorite => {
-                        console.log("Favorite created = ", newFavorite);
-                        res.json(newFavorite);
+                    .then(favorite => {
+                        Favorites.findById(favorite._id).populate('user').populate('dishes')
+                        .then(favorite => {
+                            console.log("Favorites created = ", favorite);
+                            res.statusCode = 200;
+                            res.setHeader('Content-Type', 'application/json');
+                            res.json(favorite);
+                        }, err => next(err))
+                        .catch(err => next(err))
                     }, err => next(err)) 
                     .catch(err => next(err));                   
                 }
                 else{
                     favorite.dishes.push(dish._id);
                     favorite.save()
-                    .then(newFavorite => {
-                        console.log("Item added to favorites! = ", newFavorite);
-                        res.statusCode = 200;
-                        res.json(newFavorite);
+                    .then(favorite => {
+                        Favorites.findById(favorite._id).populate('user').populate('dishes')
+                        .then(favorite => {
+                            console.log("Item added to favorites! = ", favorite);
+                            res.statusCode = 200;
+                            res.setHeader('Content-Type', 'application/json');
+                            res.json(favorite);
+                        }, err => next(err))
+                        .catch(err => next(err))
                     }, (err) => next(err))
                     .catch(err => next(err));
                 }
@@ -145,6 +182,7 @@ favoriteRouter.route('/:dishId')
 })
 .put(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) => {
     res.statusCode = 405;
+    res.setHeader('Content-Type', 'text/plain');
 	res.end('PUT operation not suppported on /favorites/' + req.params.dishId);
 })
 .delete(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) => {
@@ -157,20 +195,26 @@ favoriteRouter.route('/:dishId')
                 favorite.dishes.splice(index, 1);
                 favorite.save()
                 .then(favorite => {
-                    console.log("Dish ", req.params.dishId, " removed from favorites! = ", favorite);
-                    res.statusCode = 200;
-                    res.setHeader('Content-Type', 'application/json');
-                    res.json(favorite);
+                    Favorites.findById(favorite._id).populate('user').populate('dishes')
+                    .then(favorite => {
+                        console.log("Dish ", req.params.dishId, " removed from favorites! = ", favorite);
+                        res.statusCode = 200;
+                        res.setHeader('Content-Type', 'application/json');
+                        res.json(favorite);
+                    }, err => next(err))
+                    .catch(err => next(err))
                 }, err => next(err))
                 .catch(err => next(err))
             }else{
                 console.log("Item don't exist in favorites!");
                 res.statusCode = 404;
-                res.end("Item don't exist in favorites!");
+                res.setHeader('Content-Type', 'text/plain');
+                res.end('Dish ' + req.params.dishId + ' don\'t exist in your favorites!');
             }
         }else{
             console.log("You don't have any favorites!");
             res.statusCode = 404;
+            res.setHeader('Content-Type', 'text/plain');
             res.end("You don't have any favorites!");
         }
     }, (err) => next(err))

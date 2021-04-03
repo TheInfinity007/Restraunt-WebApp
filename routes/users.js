@@ -10,6 +10,8 @@ const router = express.Router();
 router.use(bodyParser.json());
 
 /* GET users listing. */
+router.options('*', cors.corsWithOptions, (req, res) => { res.sendStatus(200); })
+
 router.get('/', cors.corsWithOptions, authenticate.verifyUser, authenticate.verifyAdmin, function(req, res, next) {
   User.find({}, (err, users) => {
     if(err){
@@ -57,12 +59,34 @@ router.post('/signup', cors.corsWithOptions, (req, res, next) => {
 });
 
 // When the user logged in the server will create a token and send it to client
-router.post('/login', cors.corsWithOptions, passport.authenticate('local'), (req, res) => {
-  // create token and send it to client
-  var token = authenticate.getToken({ _id: req.user._id});  
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'application/json');
-  res.json({ success: true, token: token, status: 'You are successfully logged in!' });
+router.post('/login', cors.corsWithOptions, (req, res, next) => {
+
+  passport.authenticate('local', (err, user, info) => {
+    if(err)
+      return next(err);
+
+    if(!user){
+      // user not exist -> pass information back to the server
+      // or the username or password is incorrect
+      res.statusCode = 401;
+      res.setHeader('Content-Type', 'application/json');
+      return res.json({ success: false, status: 'Login Unsuccessful!', err: info });
+    }
+
+    // user verified
+    req.logIn(user, (err) => {
+      if(err){
+        res.statusCode = 401;
+        res.setHeader('Content-Type', 'application/json');
+        return res.json({ success: false, status: 'Login Unsuccessful!', err: 'Could not log in user!' });
+      }
+      // create token and send it to client
+      var token = authenticate.getToken({ _id: req.user._id});  
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ success: true, token: token, status: 'Login Successful!' });
+    });
+  })(req, res, next);
 });
 
 router.get('/logout', cors.corsWithOptions, (req, res, next) => {
@@ -92,6 +116,24 @@ router.get('/facebook/token', passport.authenticate('facebook-token'), (req, res
     res.setHeader('Content-Type', 'application/json');
     res.json({ success: true, token: token, status: 'You are successfully logged in! using fb' });
   }
+});
+
+router.get('/checkJWTToken', cors.corsWithOptions, (req, res) => {
+  passport.authenticate('jwt', { session: false }, (err, user, info) => {
+    if(err)
+      return next(err);
+    
+    if(!user){
+      res.statusCode = 401;
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ status: 'JWT invalid', success: false, err: info });
+    }
+    else{
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ status: 'JWT valid!', success: true, user: user });
+    }
+  })(req, res);
 });
 
 module.exports = router;
