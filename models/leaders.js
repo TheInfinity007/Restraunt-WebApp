@@ -6,7 +6,8 @@ const leaderSchema = new Schema({
     image: { type: String, require: true},
     designation: { type: String, require: true},
     abbr: { type: String},
-    description: { type: String, required: true }
+    description: { type: String, required: true },
+    featured: { type: Boolean, default: false }
 }, {
     timestamps: true
 });

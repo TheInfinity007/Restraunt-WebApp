@@ -8,6 +8,7 @@ const promoSchema = new Schema({
     label: { type :String, default: ''},
     price: { type : mongoose.Types.Currency, required: true, min: 0},
     description: { type : String, required: true},
+    featured: { type: Boolean, default: false }
 }, {
     timestamps: true
 });
