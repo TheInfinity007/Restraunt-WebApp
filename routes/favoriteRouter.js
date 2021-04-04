@@ -76,8 +76,9 @@ favoriteRouter.route('/')
         }, err => next(err)) 
         .catch(err => next(err));           
     }else{
-        res.statusCode = 404;
-        res.end('No items found!');    
+        let err = new Error('Dishes not found in request body');
+        err.statusCode = 404;
+        next(err);
     }
 })
 .put(cors.corsWithOptions, authenticate.verifyUser, (req, res, next) => {
@@ -207,15 +208,15 @@ favoriteRouter.route('/:dishId')
                 .catch(err => next(err))
             }else{
                 console.log("Item don't exist in favorites!");
-                res.statusCode = 404;
-                res.setHeader('Content-Type', 'text/plain');
-                res.end('Dish ' + req.params.dishId + ' don\'t exist in your favorites!');
+                let err = new Error('Dish ' + req.params.dishId + ' not found in your favorites!');
+                err.statusCode = 404;
+                next(err);
             }
         }else{
             console.log("You don't have any favorites!");
-            res.statusCode = 404;
-            res.setHeader('Content-Type', 'text/plain');
-            res.end("You don't have any favorites!");
+            let err = new Error('Dish ' + req.params.dishId + ' not found in your favorites!');
+            err.statusCode = 404;
+            next(err);
         }
     }, (err) => next(err))
     .catch(err => next(err));
